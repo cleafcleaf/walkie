@@ -293,7 +293,6 @@ let peer = null;
 let localStream = null;
 const connections = {}; // color -> {call, audioEl, status}
 
-// ---- Setup screen wiring ----
 const codeInput = document.getElementById('code');
 const colorBtns = document.querySelectorAll('.color-btn');
 const startBtn = document.getElementById('startBtn');
@@ -317,9 +316,17 @@ startBtn.addEventListener('click', async ()=>{
   if(!familyCode || !myColor) return;
   startBtn.textContent = 'Asking for microphone…';
   startBtn.disabled = true;
+
+  // Unlock Web Audio context for Safari/iOS
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if(AudioCtx){
+    const ctx = new AudioCtx();
+    ctx.resume();
+  }
+
   try{
     localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
-    localStream.getAudioTracks().forEach(t=>t.enabled = false); // muted until PTT held
+    localStream.getAudioTracks().forEach(t=>t.enabled = false); // Mute initially
     boot();
   }catch(e){
     startBtn.textContent = 'Mic blocked — check Settings';
@@ -328,6 +335,15 @@ startBtn.addEventListener('click', async ()=>{
 
 function peerIdFor(color){
   return 'famwalkie-' + familyCode + '-' + color;
+}
+
+function colorFromPeerId(id){
+  return id.split('-').pop();
+}
+
+function shouldInitiateCall(otherColor){
+  // Deterministic connection direction (alphabetical ordering)
+  return myColor < otherColor;
 }
 
 function boot(){
@@ -342,7 +358,14 @@ function boot(){
     row.className = 'roster-row';
     row.innerHTML = `<span class="name"><span class="swatch" style="background:${SWATCH_HEX[c]}"></span>${c[0].toUpperCase()+c.slice(1)}</span><span class="status-pill offline" id="status-${c}">Waiting…</span>`;
     roster.appendChild(row);
-    connections[c] = {call:null, audioEl:null, status:'offline'};
+
+    // Pre-create audio element to pass autoplay policies
+    const audioEl = document.createElement('audio');
+    audioEl.autoplay = true;
+    audioEl.playsInline = true;
+    document.getElementById('audioSlots').appendChild(audioEl);
+
+    connections[c] = {call:null, audioEl:audioEl, status:'offline'};
   });
 
   peer = new Peer(peerIdFor(myColor));
@@ -363,43 +386,41 @@ function boot(){
   });
 }
 
-function colorFromPeerId(id){
-  return id.split('-').pop();
-}
-
 function tryConnectAll(){
   COLORS.filter(c=>c!==myColor).forEach(c=>{
-    if(connections[c].call) return; // already connected/connecting
+    if(connections[c].call) return; // Already connected
+    if(!shouldInitiateCall(c)) return; // Only initiate if our color sorts lower
+
     const call = peer.call(peerIdFor(c), localStream);
     if(call) wireCall(c, call);
   });
 }
 
 function wireCall(color, call){
-  if(connections[color].call) return;
+  if(connections[color].call && connections[color].call !== call){
+    connections[color].call.close();
+  }
+
   connections[color].call = call;
   setStatus(color, 'online');
 
   call.on('stream', remoteStream=>{
-    let audioEl = connections[color].audioEl;
-    if(!audioEl){
-      audioEl = document.createElement('audio');
-      audioEl.autoplay = true;
-      audioEl.playsInline = true;
-      document.getElementById('audioSlots').appendChild(audioEl);
-      connections[color].audioEl = audioEl;
+    const audioEl = connections[color].audioEl;
+    if(audioEl){
+      audioEl.srcObject = remoteStream;
+      audioEl.play().catch(e=>console.log('Autoplay blocked:', e));
     }
-    audioEl.srcObject = remoteStream;
   });
 
-  call.on('close', ()=>{
-    connections[color].call = null;
-    setStatus(color, 'offline');
-  });
-  call.on('error', ()=>{
-    connections[color].call = null;
-    setStatus(color, 'offline');
-  });
+  const cleanup = ()=>{
+    if(connections[color].call === call){
+      connections[color].call = null;
+      setStatus(color, 'offline');
+    }
+  };
+
+  call.on('close', cleanup);
+  call.on('error', cleanup);
 }
 
 function setStatus(color, state){
@@ -411,7 +432,7 @@ function setStatus(color, state){
   pill.textContent = state === 'online' ? 'On the line' : (state === 'talking' ? 'Talking' : 'Waiting…');
 }
 
-// ---- Push to talk ----
+// Push to talk handlers
 const ptt = document.getElementById('pttBtn');
 const pttLabel = document.getElementById('pttLabel');
 
@@ -422,6 +443,7 @@ function startTalk(e){
   ptt.classList.add('live');
   pttLabel.textContent = 'ON AIR';
 }
+
 function stopTalk(e){
   if(e) e.preventDefault();
   if(!localStream) return;
@@ -429,6 +451,7 @@ function stopTalk(e){
   ptt.classList.remove('live');
   pttLabel.textContent = 'HOLD';
 }
+
 ['mousedown','touchstart'].forEach(ev=>ptt.addEventListener(ev, startTalk));
 ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=>ptt.addEventListener(ev, stopTalk));
 </script>
