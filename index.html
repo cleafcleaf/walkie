@@ -457,5 +457,11 @@ function stopTalk(e){
 ['mousedown','touchstart'].forEach(ev=>ptt.addEventListener(ev, startTalk));
 ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=>ptt.addEventListener(ev, stopTalk));
 </script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
+
 </body>
 </html>
