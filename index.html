@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Family Walkie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<style>
+  :root{
+    --case-orange:#FF7A3D;
+    --case-orange-dark:#E35F22;
+    --cream:#FFF6EA;
+    --charcoal:#2B2A33;
+    --screen:#22232B;
+    --yellow:#FFC94A;
+    --green:#4FC98A;
+    --red:#F0483C;
+    --grey:#9C97A8;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--cream);
+    font-family:'Nunito',sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    min-height:100dvh;
+    padding:16px;
+    color:var(--charcoal);
+    overflow:hidden;
+  }
+  .device{
+    width:100%;
+    max-width:380px;
+    background:linear-gradient(180deg,var(--case-orange),var(--case-orange-dark));
+    border-radius:38px;
+    padding:18px 18px 26px;
+    box-shadow:0 20px 40px -12px rgba(227,95,34,0.45), inset 0 2px 0 rgba(255,255,255,0.25);
+    position:relative;
+  }
+  .antenna{
+    position:absolute;
+    top:-34px;
+    left:28px;
+    width:8px;
+    height:44px;
+    background:var(--charcoal);
+    border-radius:4px;
+    transform:rotate(-8deg);
+    transform-origin:bottom center;
+  }
+  .antenna::after{
+    content:"";
+    position:absolute;
+    top:-8px; left:-3px;
+    width:14px; height:14px;
+    border-radius:50%;
+    background:var(--charcoal);
+  }
+  .speaker-grille{
+    display:grid;
+    grid-template-columns:repeat(10,1fr);
+    gap:4px;
+    padding:0 14px;
+    margin-bottom:12px;
+  }
+  .speaker-grille span{
+    height:4px;
+    border-radius:2px;
+    background:rgba(0,0,0,0.15);
+  }
+  .screen{
+    background:var(--screen);
+    border-radius:22px;
+    padding:18px 16px;
+    min-height:230px;
+    display:flex;
+    flex-direction:column;
+    box-shadow:inset 0 3px 10px rgba(0,0,0,0.5);
+  }
+  h1{
+    font-family:'Fredoka',sans-serif;
+    color:var(--cream);
+    font-size:19px;
+    margin:0 0 14px;
+    font-weight:600;
+    text-align:center;
+    letter-spacing:0.2px;
+  }
+  .field{margin-bottom:12px;}
+  .field label{
+    display:block;
+    color:var(--grey);
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  input[type=text]{
+    width:100%;
+    padding:11px 12px;
+    border-radius:12px;
+    border:none;
+    background:#3A3B45;
+    color:var(--cream);
+    font-family:'Nunito',sans-serif;
+    font-size:15px;
+    font-weight:700;
+    outline:none;
+  }
+  input[type=text]::placeholder{color:#6E6D7A;}
+  .colors{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:4px;
+  }
+  .color-btn{
+    border:none;
+    border-radius:14px;
+    padding:14px 8px;
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:15px;
+    color:white;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    opacity:0.55;
+  }
+  .color-btn .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.8);}
+  .color-btn[data-c="red"]{background:#C6392F;}
+  .color-btn[data-c="blue"]{background:#3B6FD1;}
+  .color-btn[data-c="green"]{background:#399A66;}
+  .color-btn[data-c="yellow"]{background:#D19A2A;}
+  .color-btn.enabled{opacity:1;}
+  .color-btn:active.enabled{transform:scale(0.96);}
+  .start-btn{
+    margin-top:14px;
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:14px;
+    background:var(--yellow);
+    color:var(--charcoal);
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:16px;
+  }
+  .start-btn:disabled{background:#5A5A63; color:#8A8A93;}
+
+  /* --- Talk screen --- */
+  .talk-screen{display:none; flex:1; flex-direction:column;}
+  .talk-screen.active{display:flex;}
+  .setup-screen.hidden{display:none;}
+  .my-badge{
+    display:flex; align-items:center; gap:8px;
+    color:var(--cream); font-family:'Fredoka',sans-serif; font-weight:600; font-size:14px;
+    margin-bottom:10px;
+  }
+  .my-badge .swatch{width:12px;height:12px;border-radius:50%;}
+  .roster{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .roster-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:#33343E;
+    border-radius:10px;
+    padding:8px 12px;
+  }
+  .roster-row .name{
+    display:flex; align-items:center; gap:8px;
+    color:var(--cream); font-weight:700; font-size:13px;
+  }
+  .roster-row .swatch{width:10px;height:10px;border-radius:50%;}
+  .status-pill{
+    font-size:11px;
+    font-weight:800;
+    padding:3px 9px;
+    border-radius:999px;
+    color:white;
+  }
+  .status-pill.online{background:var(--green);}
+  .status-pill.offline{background:#55555f; color:#a6a5b0;}
+  .status-pill.talking{background:var(--red);}
+
+  .ptt-wrap{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px 0 4px;
+  }
+  .ptt{
+    width:150px;
+    height:150px;
+    border-radius:50%;
+    border:6px solid #1a1b21;
+    background:radial-gradient(circle at 35% 30%, #4a4b57, #2c2d35);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    color:var(--cream);
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    box-shadow:0 6px 0 #17181d, 0 8px 16px rgba(0,0,0,0.4);
+  }
+  .ptt.live{
+    background:radial-gradient(circle at 35% 30%, #ff6a5e, var(--red));
+    box-shadow:0 3px 0 #a52a20, 0 6px 14px rgba(240,72,60,0.5);
+    transform:translateY(3px);
+  }
+  .ptt svg{width:38px;height:38px; margin-bottom:6px;}
+  .ptt .label{font-size:13px; letter-spacing:0.3px;}
+  .hint{
+    text-align:center;
+    color:var(--grey);
+    font-size:11px;
+    margin-top:10px;
+  }
+  audio{display:none;}
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="antenna"></div>
+  <div class="speaker-grille" id="grille"></div>
+
+  <div class="screen">
+
+    <div class="setup-screen" id="setupScreen">
+      <h1>Family Walkie 📻</h1>
+      <div class="field">
+        <label for="code">Family code (same on every phone)</label>
+        <input type="text" id="code" placeholder="e.g. smithfam" maxlength="24">
+      </div>
+      <div class="field">
+        <label>Pick your walkie</label>
+        <div class="colors" id="colorPicker">
+          <button class="color-btn" data-c="red"><span class="dot"></span>Red</button>
+          <button class="color-btn" data-c="blue"><span class="dot"></span>Blue</button>
+          <button class="color-btn" data-c="green"><span class="dot"></span>Green</button>
+          <button class="color-btn" data-c="yellow"><span class="dot"></span>Yellow</button>
+        </div>
+      </div>
+      <button class="start-btn" id="startBtn" disabled>Turn On</button>
+    </div>
+
+    <div class="talk-screen" id="talkScreen">
+      <div class="my-badge"><span class="swatch" id="mySwatch"></span><span id="myLabel"></span></div>
+      <div class="roster" id="roster"></div>
+      <div class="ptt-wrap">
+        <button class="ptt" id="pttBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+            <path d="M19 11a7 7 0 0 1-14 0M12 19v3"/>
+          </svg>
+          <span class="label" id="pttLabel">HOLD</span>
+        </button>
+      </div>
+      <div class="hint" id="hint">Hold to talk, let go to listen</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="audioSlots"></div>
+
+<script>
+for(let i=0;i<20;i++){const s=document.createElement('span'); document.getElementById('grille').appendChild(s);}
+
+const COLORS = ['red','blue','green','yellow'];
+const SWATCH_HEX = {red:'#C6392F', blue:'#3B6FD1', green:'#399A66', yellow:'#D19A2A'};
+
+let myColor = null;
+let familyCode = '';
+let peer = null;
+let localStream = null;
+const connections = {}; // color -> {call, audioEl, status}
+
+// ---- Setup screen wiring ----
+const codeInput = document.getElementById('code');
+const colorBtns = document.querySelectorAll('.color-btn');
+const startBtn = document.getElementById('startBtn');
+
+function refreshStart(){
+  const ok = codeInput.value.trim().length > 1 && myColor;
+  startBtn.disabled = !ok;
+}
+codeInput.addEventListener('input', refreshStart);
+colorBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    colorBtns.forEach(b=>b.classList.remove('enabled'));
+    btn.classList.add('enabled');
+    myColor = btn.dataset.c;
+    refreshStart();
+  });
+});
+
+startBtn.addEventListener('click', async ()=>{
+  familyCode = codeInput.value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(!familyCode || !myColor) return;
+  startBtn.textContent = 'Asking for microphone…';
+  startBtn.disabled = true;
+  try{
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
+    localStream.getAudioTracks().forEach(t=>t.enabled = false); // muted until PTT held
+    boot();
+  }catch(e){
+    startBtn.textContent = 'Mic blocked — check Settings';
+  }
+});
+
+function peerIdFor(color){
+  return 'famwalkie-' + familyCode + '-' + color;
+}
+
+function boot(){
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('talkScreen').classList.add('active');
+  document.getElementById('mySwatch').style.background = SWATCH_HEX[myColor];
+  document.getElementById('myLabel').textContent = 'You are ' + myColor[0].toUpperCase()+myColor.slice(1);
+
+  const roster = document.getElementById('roster');
+  COLORS.filter(c=>c!==myColor).forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'roster-row';
+    row.innerHTML = `<span class="name"><span class="swatch" style="background:${SWATCH_HEX[c]}"></span>${c[0].toUpperCase()+c.slice(1)}</span><span class="status-pill offline" id="status-${c}">Waiting…</span>`;
+    roster.appendChild(row);
+    connections[c] = {call:null, audioEl:null, status:'offline'};
+  });
+
+  peer = new Peer(peerIdFor(myColor));
+
+  peer.on('open', ()=>{
+    setInterval(tryConnectAll, 2500);
+    tryConnectAll();
+  });
+
+  peer.on('call', incomingCall=>{
+    const other = colorFromPeerId(incomingCall.peer);
+    incomingCall.answer(localStream);
+    wireCall(other, incomingCall);
+  });
+
+  peer.on('error', err=>{
+    console.warn('peer error', err.type);
+  });
+}
+
+function colorFromPeerId(id){
+  return id.split('-').pop();
+}
+
+function tryConnectAll(){
+  COLORS.filter(c=>c!==myColor).forEach(c=>{
+    if(connections[c].call) return; // already connected/connecting
+    const call = peer.call(peerIdFor(c), localStream);
+    if(call) wireCall(c, call);
+  });
+}
+
+function wireCall(color, call){
+  if(connections[color].call) return;
+  connections[color].call = call;
+  setStatus(color, 'online');
+
+  call.on('stream', remoteStream=>{
+    let audioEl = connections[color].audioEl;
+    if(!audioEl){
+      audioEl = document.createElement('audio');
+      audioEl.autoplay = true;
+      audioEl.playsInline = true;
+      document.getElementById('audioSlots').appendChild(audioEl);
+      connections[color].audioEl = audioEl;
+    }
+    audioEl.srcObject = remoteStream;
+  });
+
+  call.on('close', ()=>{
+    connections[color].call = null;
+    setStatus(color, 'offline');
+  });
+  call.on('error', ()=>{
+    connections[color].call = null;
+    setStatus(color, 'offline');
+  });
+}
+
+function setStatus(color, state){
+  connections[color].status = state;
+  const pill = document.getElementById('status-'+color);
+  if(!pill) return;
+  pill.classList.remove('online','offline','talking');
+  pill.classList.add(state);
+  pill.textContent = state === 'online' ? 'On the line' : (state === 'talking' ? 'Talking' : 'Waiting…');
+}
+
+// ---- Push to talk ----
+const ptt = document.getElementById('pttBtn');
+const pttLabel = document.getElementById('pttLabel');
+
+function startTalk(e){
+  e.preventDefault();
+  if(!localStream) return;
+  localStream.getAudioTracks().forEach(t=>t.enabled = true);
+  ptt.classList.add('live');
+  pttLabel.textContent = 'ON AIR';
+}
+function stopTalk(e){
+  if(e) e.preventDefault();
+  if(!localStream) return;
+  localStream.getAudioTracks().forEach(t=>t.enabled = false);
+  ptt.classList.remove('live');
+  pttLabel.textContent = 'HOLD';
+}
+['mousedown','touchstart'].forEach(ev=>ptt.addEventListener(ev, startTalk));
+['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=>ptt.addEventListener(ev, stopTalk));
+</script>
+</body>
+</html>
